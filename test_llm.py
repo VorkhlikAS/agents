@@ -21,7 +21,7 @@ def get_person() -> str:
 model = OpenAIServerModel(
     model_id="mistral-small-latest",  # Replace with your loaded model's name
     api_base="https://api.mistral.ai/v1",  # LM Studio's API endpoint
-    api_key="MHf2OOExuaY2ZklA0tUiUhIJ0xiKzsNz"  # Dummy API key; LM Studio doesn't require authentication
+    api_key=""  # Dummy API key; LM Studio doesn't require authentication
 )
 
 # Initialize the agent with the configured model and no additional tools
