@@ -1,9 +1,5 @@
-from smolagents import ToolCallingAgent, OpenAIServerModel, DuckDuckGoSearchTool, tool, Tool, VisitWebpageTool
-import logging
-from typing import Dict
-from agents.tools.last_month import LastMonthTool
-from agents.tools.min_max_avg import MinMaxAvgTool
-from agents.tools.rag import RetrieverTool
+from smolagents import  OpenAIServerModel, CodeAgent
+from agents.managed_agents import RagAgent, WebAgent
 
 class ScoringAgent:
     def __init__(self, model_id: str, api_base: str, api_key: str):
@@ -12,34 +8,45 @@ class ScoringAgent:
             api_base=api_base,
             api_key=api_key
         ) 
-
-    @tool
-    def get_context() -> str:
-        """
-        Get context for scoring.
-        """
-        return """
-            You 
-        """
     
-    def score_metrics(self, metrics, last_month_values: list, min_values: list, avg_values: list, max_values: list, metrics_docs) -> str:
+    def score_metrics(self, person:dict, scoring_docs) -> str:
         """
-        Score a metrics based on the provided metrics.
+        Score a person based on the provided data.
         """
-        question = f"SLA: {metrics.sla}, VISIBILITY: {metrics.visibility}, AVG_DURATION: {metrics.avg_duration}, DENSITY_BY_COMPANY: {metrics.density_by_company}, DENSITY_BY_OWNERBLOCK: {metrics.density_by_ownerblock}, DENSITY_BY_APPLICATION: {metrics.density_by_application}"
-        
-        search_tool = DuckDuckGoSearchTool()
-        min_max_avg_tool = MinMaxAvgTool(min_values, avg_values, max_values)
-        last_month_tool = LastMonthTool(last_month_values)
-        metrics_rag_tool = RetrieverTool(docs=metrics_docs)
 
-        self.agent = ToolCallingAgent(model=self.model, tools=[
-            # search_tool,
-            self.get_context, 
-            # last_month_tool,
-            # min_max_avg_tool,
-            metrics_rag_tool
-        ])
+        system = """
+        You are a hiring personel assessor. You review the information about the current and potential employees of the company, based on the provided data.
+
+        You are managing 3 agents that can help you accomplish this task:
+            1. A web search agent. It is very helpful to clarify the question and find the answer.
+
+
+        You should review the provided information and classify a person in on of the following categories:
+            1. EXCELLENT: There are no known issues with the person based on currently provided information
+            2. GOOD: Although there are some issues with the person, they are not critical and can be resolved.
+            3. AVERAGE: There are things to consider about the person, but they are not critical.
+            4. POOR: There are some serious issues. This person should be considered very carefully.
+            5. BAD: This person should not be hired, if they are employeed they should be fired immidiately. There are serious issues with this person.
+
+        """
+
+        person_attr = ', '.join([f"{key}: {val}" for key, val in person.items()])
+        question = f"person information {person_attr}"
+        
+        self.agent = CodeAgent(
+            model=self.model, 
+            managed_agents =[
+                RagAgent(
+                    docs=metrics_docs,
+                    model=self.model
+                ).agent,
+                WebAgent(
+                    model=self.model
+                ).agent,
+            ],
+            tools=[],
+            max_steps=15
+        )
 
         fail_counter = 0
         while True:

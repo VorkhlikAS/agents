@@ -1,9 +1,4 @@
-from smolagents import ToolCallingAgent, OpenAIServerModel, DuckDuckGoSearchTool, CodeAgent
-import logging
-from typing import Dict
-from agents.tools.last_month import LastMonthTool
-from agents.tools.min_max_avg import MinMaxAvgTool
-from agents.tools.rag import RetrieverTool
+from smolagents import  OpenAIServerModel, CodeAgent
 from agents.managed_agents import RagAgent, WebAgent, StatisticsAgent
 
 class CriticallityAgent:
@@ -28,18 +23,16 @@ class CriticallityAgent:
                 4. Density by company: Average number of critical vulnerabilities per unique FQDNs.
                 5. Density by ownerblock: Average number of critical vulnerabilities per unique FQDNs, grouped by ownerblock.
                 6. Density by application: Average number of critical vulnerabilities per unique FQDNs, grouped by application.
-            
-            Your final answer should be a number, ranging from 0 to 10. Where 0-3 is good, 4-6 is medium, and 7-10 is bad.
 
-            You are managing 2 agents that can help you accomplish this task:
-                1. A web search agent
+            You are managing 3 agents that can help you accomplish this task:
+                1. A web search agent. It is very helpful to clarify the question and find the answer.
                 2. A retriever agent to search related documents
+                3. A statistics agent to compare current values with the historical ones from the company. This however does not help you grade the metrics, but it can help you understand the context of the metrics.
 
-            You can use the following tools to score the metrics:
-                2. MinMaxAvgTool to look up what were the min, max, and average values for these parameters currently in the company
-                3. last_month_tool to look up what were the values for these parameters last month
+            You should use web search to clarify the metrics before useing statistics agent to compare the current values with the historical ones. 
+            If you feel like you still lack clarity about the metrics, you can use the retriever agent to search related documents.
 
-            Use final_answer_tool to provide a single number as a final answer.\n
+            Your final answer should be a number, ranging from 0 to 10. Where 0-3 is good, 4-6 is medium, and 7-10 is bad.\n
         """
 
         question = system + f"SLA: {metrics.sla}, VISIBILITY: {metrics.visibility}, AVG_DURATION: {metrics.avg_duration}, DENSITY_BY_COMPANY: {metrics.density_by_company}, DENSITY_BY_OWNERBLOCK: {metrics.density_by_ownerblock}, DENSITY_BY_APPLICATION: {metrics.density_by_application}"
@@ -62,11 +55,8 @@ class CriticallityAgent:
                     model=self.model
                 ).agent
             ],
-            tools=[
-                # last_month_tool,
-                # min_max_avg_tool,
-            ],
-
+            tools=[],
+            max_steps=15
         )
 
         fail_counter = 0
