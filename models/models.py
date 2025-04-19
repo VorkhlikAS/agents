@@ -2,9 +2,12 @@ from pydantic import BaseModel
 from typing import List, Dict
 
 class PersonParams(BaseModel):
-    attitute: str
-    gambling: str
-    debt: str
+    characterization: str
+    total_debt: str
+    violations_shops: Dict[str, str]
+    violations_investigations: Dict[str, str]
+    urls_payments: Dict[str, str]
+
 
 class MetricsParams(BaseModel):
     sla: str
@@ -13,10 +16,10 @@ class MetricsParams(BaseModel):
     density_by_company: str
     density_by_ownerblock: str
     density_by_application: str
-    last_month_values: Dict[str, str]  # Dictionary to store key-value pairs for last month's values
-    min: Dict[str, str]  # Dictionary for minimum values
-    max: Dict[str, str]  # Dictionary for maximum values
-    avg: Dict[str, str]  # Dictionary for average values
+    last_month_values: Dict[str, str]
+    min: Dict[str, str] 
+    max: Dict[str, str] 
+    avg: Dict[str, str]
 
 
 
