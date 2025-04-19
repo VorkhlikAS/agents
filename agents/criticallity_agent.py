@@ -3,6 +3,7 @@ import logging
 from typing import Dict
 from agents.tools.last_month import LastMonthTool
 from agents.tools.min_max_avg import MinMaxAvgTool
+from agents.tools.rag import RetrieverTool
 
 class CriticallityAgent:
     def __init__(self, model_id: str, api_base: str, api_key: str):
@@ -20,24 +21,28 @@ class CriticallityAgent:
         """
         Get context for scoring.
         """
-        return (
-            "You are a security assessment agent that provides a mark based on the metrics."
-            "Your task is to mark the results of the current vulnerability "
-            "assessment of the company based on the following metrics:\n\n"
-            "1. SLA: The ratio of tasks that were completed on time to the total number of tasks.\n"
-            "2. Visibility: The ratio of hosts that are visible to the security team to the total number of hosts.\n"
-            "3. Average duration: The average time it takes to complete a task in days.\n"
-            "4. Density by company: Average number of critical vulnerabilities per unique FQDNs.\n"
-            "5. Density by ownerblock: Average number of critical vulnerabilities per unique FQDNs, grouped by ownerblock.\n"
-            "6. Density by application: Average number of critical vulnerabilities per unique FQDNs, grouped by application.\n\n"
-            "Your final answer should be a number, ranging from 0 to 10. Where 0-3 is good, 4-6 is medium, and 7-10 is bad. "
-            "You can use web search to look up the normal values for these parameters"
-            "You can use min_max_avg_tool to look up what were the min, max, and average values for these parameters currently in the company\n"
-            "You can use last_month_tool to look up what were the values for these parameters last month\n"
-            "Provide a SINGLE number from 0 to 10 as an answer!"
-        )
+        return """
+            You are a security assessment agent that provides a mark based on the metrics.
+            Your task is to mark the results of the current vulnerability assessment of the company based on the following metrics:
+                1. SLA: The ratio of tasks that were completed on time to the total number of tasks.
+                2. Visibility: The ratio of hosts that are visible to the security team to the total number of hosts.
+                3. Average duration: The average time it takes to complete a task in days.
+                4. Density by company: Average number of critical vulnerabilities per unique FQDNs.
+                5. Density by ownerblock: Average number of critical vulnerabilities per unique FQDNs, grouped by ownerblock.
+                6. Density by application: Average number of critical vulnerabilities per unique FQDNs, grouped by application.
+            
+            Your final answer should be a number, ranging from 0 to 10. Where 0-3 is good, 4-6 is medium, and 7-10 is bad.
+
+            You can use the following tools to score the metrics:
+                1. web search to look up the normal values for these parameters
+                2. MinMaxAvgTool to look up what were the min, max, and average values for these parameters currently in the company
+                3. last_month_tool to look up what were the values for these parameters last month
+                4. retriever_tool to look up the documents that are related to the metrics
+
+            Provide a SINGLE number from 0 to 10 as an answer!
+        """
     
-    def score_metrics(self, metrics, last_month_values: list, min_values: list, avg_values: list, max_values: list) -> str:
+    def score_metrics(self, metrics, last_month_values: list, min_values: list, avg_values: list, max_values: list, metrics_docs) -> str:
         """
         Score a metrics based on the provided metrics.
         """
@@ -46,12 +51,14 @@ class CriticallityAgent:
         search_tool = DuckDuckGoSearchTool()
         min_max_avg_tool = MinMaxAvgTool(min_values, avg_values, max_values)
         last_month_tool = LastMonthTool(last_month_values)
+        metrics_rag_tool = RetrieverTool(docs=metrics_docs)
 
         self.agent = ToolCallingAgent(model=self.model, tools=[
-            search_tool,
+            # search_tool,
             self.get_context, 
-            last_month_tool,
-            min_max_avg_tool,
+            # last_month_tool,
+            # min_max_avg_tool,
+            metrics_rag_tool
         ])
 
         fail_counter = 0
