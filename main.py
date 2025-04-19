@@ -71,9 +71,9 @@ def run_person_endpoint(data: PersonParams):
 
 @app.post("/score_metrics")
 def run_metrics_endpoint(data: MetricsParams):
-    try:
-        result = score_metrics(data)
-        return {"result": result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    # try:
+    result = score_metrics(data)
+    return {"result": result}
+    # except Exception as e:
+    #     raise HTTPException(status_code=500, detail=str(e))
 

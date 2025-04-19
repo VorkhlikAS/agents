@@ -1,68 +1,55 @@
-from smolagents import ToolCallingAgent, OpenAIServerModel, tool, DuckDuckGoSearchTool
+from smolagents import ToolCallingAgent, OpenAIServerModel, DuckDuckGoSearchTool, tool, Tool, VisitWebpageTool
 import logging
-# from smolagents.prompts import TOOL_CALLING_SYSTEM_PROMPT
+from typing import Dict
+from agents.tools.last_month import LastMonthTool
+from agents.tools.min_max_avg import MinMaxAvgTool
+from agents.tools.rag import RetrieverTool
 
 class ScoringAgent:
     def __init__(self, model_id: str, api_base: str, api_key: str):
-        """
-        Initialize the ScoringAgent with the model configuration.
-        """
         self.model = OpenAIServerModel(
             model_id=model_id,
             api_base=api_base,
             api_key=api_key
-        )
+        ) 
 
-        self.search_tool = DuckDuckGoSearchTool()
-
-        self.agent = ToolCallingAgent(model=self.model, tools=[self.get_context, self.search_tool])
-        
-
-    @staticmethod
     @tool
     def get_context() -> str:
         """
         Get context for scoring.
         """
-        return (
-            """Score the following person based on these metrics
-            Metrics: Records from security: Violent or not?, What is his debt?, What he spends his money on?
-
-            Your final answer should be a number, ranging from 0 to 10. 
-
-            Example question 1:
-            Violent, no debt, no gambling
-            Example answer 1:
-            4
-
-            Example question 2:
-            Calm, 300 rub. debt, gambler
-            Example answer 2:
-            2
-
-            Example question 3:
-            Reasonable, Charizmatic, 100 rub. debt. debt, no gambling
-            Example answer 3:
-            8
-            """
-        )
+        return """
+            You 
+        """
     
-    def score_person(self, metrics) -> str:
+    def score_metrics(self, metrics, last_month_values: list, min_values: list, avg_values: list, max_values: list, metrics_docs) -> str:
         """
-        Score a person based on the provided metrics.
+        Score a metrics based on the provided metrics.
         """
-        question = f"Score the following person based on these metrics\n{metrics.attitute}, {metrics.gambling}, {metrics.debt}"
+        question = f"SLA: {metrics.sla}, VISIBILITY: {metrics.visibility}, AVG_DURATION: {metrics.avg_duration}, DENSITY_BY_COMPANY: {metrics.density_by_company}, DENSITY_BY_OWNERBLOCK: {metrics.density_by_ownerblock}, DENSITY_BY_APPLICATION: {metrics.density_by_application}"
         
+        search_tool = DuckDuckGoSearchTool()
+        min_max_avg_tool = MinMaxAvgTool(min_values, avg_values, max_values)
+        last_month_tool = LastMonthTool(last_month_values)
+        metrics_rag_tool = RetrieverTool(docs=metrics_docs)
+
+        self.agent = ToolCallingAgent(model=self.model, tools=[
+            # search_tool,
+            self.get_context, 
+            # last_month_tool,
+            # min_max_avg_tool,
+            metrics_rag_tool
+        ])
+
         fail_counter = 0
         while True:
             try:
-                if fail_counter > 3:
+                if fail_counter > 5:
                     break
                 response = self.agent.run(question)
                 response = int(response)
                 break
             except Exception as e:
                 fail_counter += 1
-                raise Exception("Failed to get a valid response after multiple attempts.")
 
-        return response
+        return int(response)
