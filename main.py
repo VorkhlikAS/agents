@@ -44,7 +44,14 @@ SCORING_DOCS = text_processor.process_text(
 )
 
 def score_person(params: PersonParams) -> str:
-    result = scoring_agent.score_person(params)
+    result = scoring_agent.score_person(
+        params.characterization,
+        params.total_debt,
+        params.violations_shops,
+        params.violations_investigations,
+        params.urls_payments,
+        SCORING_DOCS
+        )
     return result
 
 

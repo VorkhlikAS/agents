@@ -1,27 +1,20 @@
-from smolagents import ToolCallingAgent, OpenAIServerModel, DuckDuckGoSearchTool, tool, Tool
-import logging
-from typing import Dict
-from agents.tools.last_month import LastMonthTool
-from agents.tools.min_max_avg import MinMaxAvgTool
-from agents.tools.rag import RetrieverTool
+from smolagents import  OpenAIServerModel, CodeAgent
+from agents.managed_agents import RagAgent, WebAgent, StatisticsAgent
 
 class CriticallityAgent:
     def __init__(self, model_id: str, api_base: str, api_key: str):
-        """
-        Initialize the CriticallityAgent with the model configuration.
-        """
         self.model = OpenAIServerModel(
             model_id=model_id,
             api_base=api_base,
             api_key=api_key
         ) 
+    
+    def score_metrics(self, metrics, last_month_values: list, min_values: list, avg_values: list, max_values: list, metrics_docs) -> str:
+        """
+        Score a metrics based on the provided metrics.
+        """
 
-    @tool
-    def get_context() -> str:
-        """
-        Get context for scoring.
-        """
-        return """
+        system = """
             You are a security assessment agent that provides a mark based on the metrics.
             Your task is to mark the results of the current vulnerability assessment of the company based on the following metrics:
                 1. SLA: The ratio of tasks that were completed on time to the total number of tasks.
@@ -30,36 +23,41 @@ class CriticallityAgent:
                 4. Density by company: Average number of critical vulnerabilities per unique FQDNs.
                 5. Density by ownerblock: Average number of critical vulnerabilities per unique FQDNs, grouped by ownerblock.
                 6. Density by application: Average number of critical vulnerabilities per unique FQDNs, grouped by application.
-            
-            Your final answer should be a number, ranging from 0 to 10. Where 0-3 is good, 4-6 is medium, and 7-10 is bad.
 
-            You can use the following tools to score the metrics:
-                1. web search to look up the normal values for these parameters
-                2. MinMaxAvgTool to look up what were the min, max, and average values for these parameters currently in the company
-                3. last_month_tool to look up what were the values for these parameters last month
-                4. retriever_tool to look up the documents that are related to the metrics
+            You are managing 3 agents that can help you accomplish this task:
+                1. A web search agent. It is very helpful to clarify the question and find the answer.
+                2. A retriever agent to search related documents
+                3. A statistics agent to compare current values with the historical ones from the company. This however does not help you grade the metrics, but it can help you understand the context of the metrics.
 
-            Provide a SINGLE number from 0 to 10 as an answer!
-        """
-    
-    def score_metrics(self, metrics, last_month_values: list, min_values: list, avg_values: list, max_values: list, metrics_docs) -> str:
-        """
-        Score a metrics based on the provided metrics.
-        """
-        question = f"SLA: {metrics.sla}, VISIBILITY: {metrics.visibility}, AVG_DURATION: {metrics.avg_duration}, DENSITY_BY_COMPANY: {metrics.density_by_company}, DENSITY_BY_OWNERBLOCK: {metrics.density_by_ownerblock}, DENSITY_BY_APPLICATION: {metrics.density_by_application}"
-        
-        search_tool = DuckDuckGoSearchTool()
-        min_max_avg_tool = MinMaxAvgTool(min_values, avg_values, max_values)
-        last_month_tool = LastMonthTool(last_month_values)
-        metrics_rag_tool = RetrieverTool(docs=metrics_docs)
+            You should use web search to clarify the metrics before useing statistics agent to compare the current values with the historical ones. 
+            If you feel like you still lack clarity about the metrics, you can use the retriever agent to search related documents.
 
-        self.agent = ToolCallingAgent(model=self.model, tools=[
-            # search_tool,
-            self.get_context, 
-            # last_month_tool,
-            # min_max_avg_tool,
-            metrics_rag_tool
-        ])
+            Your final answer should be a number, ranging from 0 to 10. Where 0-3 is good, 4-6 is medium, and 7-10 is bad.\n
+        """
+
+        question = system + f"SLA: {metrics.sla}, VISIBILITY: {metrics.visibility}, AVG_DURATION: {metrics.avg_duration}, DENSITY_BY_COMPANY: {metrics.density_by_company}, DENSITY_BY_OWNERBLOCK: {metrics.density_by_ownerblock}, DENSITY_BY_APPLICATION: {metrics.density_by_application}"
+
+        self.agent = CodeAgent(
+            model=self.model, 
+            managed_agents =[
+                RagAgent(
+                    docs=metrics_docs,
+                    model=self.model
+                ).agent,
+                WebAgent(
+                    model=self.model
+                ).agent,
+                StatisticsAgent(
+                    last_month_values=last_month_values,
+                    min_values=min_values,
+                    avg_values=avg_values,
+                    max_values=max_values,
+                    model=self.model
+                ).agent
+            ],
+            tools=[],
+            max_steps=15
+        )
 
         fail_counter = 0
         while True:
