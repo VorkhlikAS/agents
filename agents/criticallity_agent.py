@@ -1,13 +1,21 @@
 from smolagents import  OpenAIServerModel, CodeAgent
 from agents.managed_agents import RagAgent, WebAgent, StatisticsAgent
+from agents.custom_model  import CustomServerModel
 
 class CriticallityAgent:
     def __init__(self, model_id: str, api_base: str, api_key: str):
-        self.model = OpenAIServerModel(
+        self.extra_headers={
+            'accept':'*/*',
+            'Authorization':'Bearer ' + api_key,
+            'Content-Type':'application/json'
+        }
+        self.model = CustomServerModel(
             model_id=model_id,
             api_base=api_base,
-            api_key=api_key
+            api_key=api_key,
+            extra_headers=self.extra_headers
         ) 
+        
     
     def score_metrics(self, metrics, last_month_values: list, min_values: list, avg_values: list, max_values: list, metrics_docs) -> str:
         """
@@ -28,11 +36,13 @@ class CriticallityAgent:
                 1. A web search agent. It is very helpful to clarify the question and find the answer.
                 2. A retriever agent to search related documents
                 3. A statistics agent to compare current values with the historical ones from the company. This however does not help you grade the metrics, but it can help you understand the context of the metrics.
+                Do not make judgments on the previous scores you've given but keep them in min.
 
             You should use web search to clarify the metrics before useing statistics agent to compare the current values with the historical ones. 
             If you feel like you still lack clarity about the metrics, you can use the retriever agent to search related documents.
 
-            Your final answer should be a number, ranging from 0 to 10. Where 0-3 is good, 4-6 is medium, and 7-10 is bad.\n
+            Your final answer should be a number, ranging from 0 to 10. Where 0-3 is good, 4-6 is medium, and 7-10 is bad and resasoning on why did you assign that score in the following format:
+            "score": <score>, "reasoning": <reasoning>\n
         """
 
         question = system + f"SLA: {metrics.sla}, VISIBILITY: {metrics.visibility}, AVG_DURATION: {metrics.avg_duration}, DENSITY_BY_COMPANY: {metrics.density_by_company}, DENSITY_BY_OWNERBLOCK: {metrics.density_by_ownerblock}, DENSITY_BY_APPLICATION: {metrics.density_by_application}"
@@ -59,15 +69,15 @@ class CriticallityAgent:
             max_steps=15
         )
 
-        fail_counter = 0
-        while True:
-            try:
-                if fail_counter > 5:
-                    break
-                response = self.agent.run(question)
-                response = int(response)
-                break
-            except Exception as e:
-                fail_counter += 1
+        # fail_counter = 0
+        # while True:
+        #     try:
+        #         if fail_counter > 5:
+        #             break
+        response = self.agent.run(question)
+        #         response = int(response)
+        #         break
+        #     except Exception as e:
+        #         fail_counter += 1
 
-        return int(response)
+        return response

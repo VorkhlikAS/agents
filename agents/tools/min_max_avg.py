@@ -16,9 +16,9 @@ class MinMaxAvgTool(Tool):
         self.values = {}
         if min_values and avg_values and max_values:
             self.values_str = (
-                ', '.join([f"{key}: {val}" for key, val in min_values.items()]) + '\n' + 
-                ', '.join([f"{key}: {val}" for key, val in avg_values.items()]) + '\n' +  
-                ', '.join([f"{key}: {val}" for key, val in max_values.items()])
+                ', '.join([f"min_{key}: {val}" for key, val in min_values.items()]) + '\n' + 
+                ', '.join([f"avg_{key}: {val}" for key, val in avg_values.items()]) + '\n' +  
+                ', '.join([f"max_{key}: {val}" for key, val in max_values.items()])
             )
         else:
             self.values_str = None
@@ -35,13 +35,7 @@ class MinMaxAvgTool(Tool):
             )
         else:
             default_values = (
-                "Here are the min, max, and average values for the metrics, this might help you mark the current metrics correctly:\n" +
-                "SLA: min: 0.5, avg: 0.7, max: 0.9; " +
-                "VISIBILITY: min: 0.8, avg: 0.85, max: 0.9; " +
-                "AVG_DURATION: min: 23, avg: 25, max: 30; " +
-                "DENSITY_BY_COMPANY: min: 10, avg: 12, max: 15; " +
-                "DENSITY_BY_OWNERBLOCK: min: 5, avg: 6, max: 8; " +
-                "DENSITY_BY_APPLICATION: min: 6, avg: 7, max: 9"
+                "There were no values for the metrics."
             )
             logger.info("Forward function default output: %s", default_values)  # Log the default output
             return default_values

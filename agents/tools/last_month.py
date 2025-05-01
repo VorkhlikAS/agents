@@ -14,7 +14,7 @@ class LastMonthTool(Tool):
     def __init__(self, last_month: dict) -> None:
         super().__init__()
         if last_month:
-            self.values_str = ', '.join([f"{key}: {val}" for key, val in last_month.items()])
+            self.values_str = ', '.join([f"last_{key}: {val}" for key, val in last_month.items()])
         else:
             self.values_str = None
 
@@ -30,9 +30,7 @@ class LastMonthTool(Tool):
             )
         else:
             default_values = (
-                "Here are the last month values for the metrics, this might help you mark the current metrics correctly:\n" +
-                "SLA: 0.5, VISIBILITY: 0.8, AVG_DURATION: 23, "
-                "DENSITY_BY_COMPANY: 10, DENSITY_BY_OWNERBLOCK: 5, DENSITY_BY_APPLICATION: 6"
+                "There were no values in last month."
             )
             logger.info("Forward function default output (LastMonthTool): %s", default_values)  # Log the default output
             return default_values
